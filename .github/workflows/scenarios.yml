@@ -76,7 +76,7 @@ jobs:
           empty_lint="$(make lint-postmortem PM="$empty_pm" 2>&1)"
           empty_rc=$?
           set -e
-          printf '%s\\n' "$empty_lint"
+          printf '%s\n' "$empty_lint"
           if [[ "$empty_rc" -eq 0 ]]; then
             echo "empty post-mortem unexpectedly passed lint"
             exit 1
