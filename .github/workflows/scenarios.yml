@@ -69,7 +69,25 @@ jobs:
           GRADER_URL: http://127.0.0.1:8700
           VANTAGE_USER_KEY: ${{ runner.temp }}/user.key
         run: |
-          make postmortem && make lint-postmortem && exit 1 || true    # an empty template must not pass
+          # Negative control: an empty template must fail for the expected hard errors, not for arbitrary reasons.
+          empty_pm="$RUNNER_TEMP/empty-postmortem.md"
+          make postmortem PM="$empty_pm"
+          set +e
+          empty_lint="$(make lint-postmortem PM="$empty_pm" 2>&1)"
+          empty_rc=$?
+          set -e
+          printf '%s\n' "$empty_lint"
+          if [[ "$empty_rc" -eq 0 ]]; then
+            echo "empty post-mortem unexpectedly passed lint"
+            exit 1
+          fi
+          for expected in "front matter: 'detected' is missing" "front matter: 'mitigated' is missing" "front matter: 'causes' is missing"; do
+            if ! grep -Fq "$expected" <<< "$empty_lint"; then
+              echo "empty post-mortem failed for an unexpected reason; missing diagnostic: $expected"
+              exit 1
+            fi
+          done
+          rm -f "$empty_pm"
           python ../../framework/ci_postmortem.py . postmortem.md
           make lint-postmortem
           make debrief | tee "$RUNNER_TEMP/debrief.log"
